@@ -5,8 +5,10 @@
 package it.polito.tdp.imdb;
 
 import java.net.URL;
+import java.util.List;
 import java.util.ResourceBundle;
-
+import it.polito.tdp.imdb.model.DirectorPeso;
+import it.polito.tdp.imdb.model.Director;
 import it.polito.tdp.imdb.model.Model;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -18,7 +20,7 @@ import javafx.scene.control.TextField;
 public class FXMLController {
 	
 	private Model model;
-
+ 
     @FXML // ResourceBundle that was given to the FXMLLoader
     private ResourceBundle resources;
 
@@ -35,10 +37,10 @@ public class FXMLController {
     private Button btnCercaAffini; // Value injected by FXMLLoader
 
     @FXML // fx:id="boxAnno"
-    private ComboBox<?> boxAnno; // Value injected by FXMLLoader
+    private ComboBox<Integer> boxAnno; // Value injected by FXMLLoader
 
     @FXML // fx:id="boxRegista"
-    private ComboBox<?> boxRegista; // Value injected by FXMLLoader
+    private ComboBox<Director> boxRegista; // Value injected by FXMLLoader
 
     @FXML // fx:id="txtAttoriCondivisi"
     private TextField txtAttoriCondivisi; // Value injected by FXMLLoader
@@ -48,19 +50,56 @@ public class FXMLController {
 
     @FXML
     void doCreaGrafo(ActionEvent event) {
-
+txtResult.clear();
+Integer anno= boxAnno.getValue();
+if(anno!=null)
+this.model.creaGrafo(anno);
+else {
+	txtResult.appendText("Inserisci anno ");
+	return;
+}
+	txtResult.appendText("il numero di vertici è"+model.getVertexSet().size()+"\n il numero di archi è"+model.getEdgeSet().size());
+ boxRegista.getItems().addAll(this.model.getVertexSet());
     }
 
     @FXML
     void doRegistiAdiacenti(ActionEvent event) {
-
+ Director d= boxRegista.getValue();
+ if(d==null)
+ {
+	 txtResult.appendText("Selezionare un regista ");
+	 return;
+ }
+ List<DirectorPeso>percorso= this.model.trovaVicini(d);
+	for(DirectorPeso a:percorso)
+		txtResult.appendText(a+"\n");
     }
-
     @FXML
     void doRicorsione(ActionEvent event) {
+String attori = txtAttoriCondivisi.getText();
 
+int attoriMax=0;
+try {
+	 attoriMax = Integer.parseInt(attori);
+	
+}catch(NumberFormatException e ) {
+	txtResult.setText("Inserire un numero");
+	return;
+
+}
+Director d= boxRegista.getValue();
+if(d==null) {
+	txtResult.setText("Selezionare un registra");
+}
+List<Director> percorso = this.model.trovaPercorso(d,attoriMax);
+if(percorso.size()==1)
+{ txtResult.setText("Percorso non trovato");
+	}
+else{
+	for(Director a:percorso)
+	txtResult.appendText(a.toString()+"\n");
     }
-
+    }
     @FXML // This method is called by the FXMLLoader when initialization is complete
     void initialize() {
         assert btnCreaGrafo != null : "fx:id=\"btnCreaGrafo\" was not injected: check your FXML file 'Scene.fxml'.";
@@ -76,6 +115,8 @@ public class FXMLController {
    public void setModel(Model model) {
     	
     	this.model = model;
+    	for(int i=2004;i<=2006;i++)
+    	boxAnno.getItems().add(i);
     	
     }
     

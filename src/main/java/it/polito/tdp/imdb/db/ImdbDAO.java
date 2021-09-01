@@ -6,7 +6,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import it.polito.tdp.imdb.model.Actor;
+import it.polito.tdp.imdb.model.Adiacenza;
 import it.polito.tdp.imdb.model.Director;
 import it.polito.tdp.imdb.model.Movie;
 
@@ -59,21 +62,28 @@ public class ImdbDAO {
 			return null;
 		}
 	}
-	
-	
-	public List<Director> listAllDirectors(){
-		String sql = "SELECT * FROM directors";
-		List<Director> result = new ArrayList<Director>();
+	public List<Adiacenza> getAdiacenze(Map <Integer,Director> idMap,Integer anno){
+		String sql = 
+				 "SELECT md1.director_id,md2.director_id,COUNT(DISTINCT(r1.actor_id)) AS peso "
+				+ "FROM roles  r1,roles r2, movies  m1,movies m2,movies_directors  md1,movies_directors md2 "
+				+ "WHERE m1.year=? AND m2.year=? AND  md1.director_id<> md2.director_id AND m1.id=md1.movie_id "
+				+ "AND m2.id=md2.movie_id AND m1.id=r1.movie_id "
+				+ "AND m2.id=r2.movie_id AND r2.actor_id=r1.actor_id AND md1.director_id> md2.director_id "
+				+ "GROUP BY md1.director_id,md2.director_id";
+		List<Adiacenza> result = new ArrayList<Adiacenza>();
 		Connection conn = DBConnect.getConnection();
 
 		try {
 			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, anno);
+			st.setInt(2, anno);
 			ResultSet res = st.executeQuery();
 			while (res.next()) {
-
-				Director director = new Director(res.getInt("id"), res.getString("first_name"), res.getString("last_name"));
+                Director d1= idMap.get(res.getInt("md1.director_id"));
+                Director d2= idMap.get(res.getInt("md2.director_id"));
+				if(d1!=null && d2!=null)
+				result.add(new Adiacenza(d1,d2,res.getInt("peso")));
 				
-				result.add(director);
 			}
 			conn.close();
 			return result;
@@ -81,6 +91,35 @@ public class ImdbDAO {
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return null;
+		}
+	}
+	
+	public void listAllDirectors(Map <Integer,Director>idMap,Integer anno){
+		String sql = "SELECT d.id,d.first_name,d.last_name "
+				+ "FROM movies AS m,directors AS d, movies_directors AS md "
+				+ "WHERE  m.year=? AND m.id=md.movie_id AND d.id=md.director_id "
+				+ "GROUP BY d.id,d.first_name,d.last_name "
+				+ "HAVING COUNT(*)>=1";
+		//List<Director> result = new ArrayList<Director>();
+		Connection conn = DBConnect.getConnection();
+
+		try {
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, anno);
+			ResultSet res = st.executeQuery();
+			
+			while (res.next()) {
+ if(!idMap.containsKey(res.getInt("d.id"))) {
+				Director director = new Director(res.getInt("d.id"), res.getString("d.first_name"), res.getString("d.last_name"));
+				idMap.put(res.getInt("d.id"), director);
+ }
+			}
+			conn.close();
+			
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return ;
 		}
 	}
 	
